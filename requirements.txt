@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+mysql-connector-python
+pydantic
+redis
+celery
+python-dotenv
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+python-telegram-bot
+aiogram

@@ -1,0 +1,24 @@
+# Игнорируем виртуальные окружения
+venv/
+.env
+
+# Файлы с конфиденциальными данными
+*.key
+*.pem
+config.json
+client_secrets.json
+
+# Игнорируем выходные и временные файлы
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# IDE и системные файлы
+.vscode/
+.idea/
+*.DS_Store
