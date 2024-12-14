@@ -22,14 +22,6 @@ def root():
 def get_config():
     return {"allow_new_user_registration": SERVICE_CONFIG["allow_new_user_registration"]}
 
-@app.get("/check_db/")
-def check_db():
-    try:
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))  # Используем text для выполнения SQL
-        return {"status": "Database connection successful"}
-    except OperationalError as e:
-        return {"status": "Database connection failed", "error": str(e)}
 
 @app.on_event("startup")
 def startup_event():
