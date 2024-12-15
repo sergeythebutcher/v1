@@ -18,61 +18,30 @@ def login(telegram_id: str = Query(...)):
     auth_url, _ = flow.authorization_url(prompt="consent", state=telegram_id)
     return {"auth_url": auth_url}
 
-@router.get("/google/callback", response_class=HTMLResponse)
+@router.get("/google/callback")
 def callback(code: str, state: str, db: Session = Depends(get_db)):
     """
-    Callback после авторизации в Google.
-    Закрывает окно после успешной авторизации.
+    Callback после авторизации через Google.
     """
+    telegram_id = state  # Извлекаем telegram_id из state
     flow = get_google_auth_flow()
     flow.fetch_token(code=code)
 
     credentials = flow.credentials
-    idinfo = verify_google_token(credentials.id_token)
-
-    if not idinfo:
-        raise HTTPException(status_code=400, detail="Invalid token")
-
-    telegram_id = state
-    email = idinfo.get("email")
-
-    # Проверяем, существует ли пользователь
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
 
-    if user:
-        # Обновляем токены
-        user.email = email
-        user.google_token = credentials.token
-        user.google_refresh_token = credentials.refresh_token
-        db.commit()
-        db.refresh(user)
-    else:
-        # Создаем нового пользователя
+    if not user:
         user = User(
             telegram_id=telegram_id,
-            email=email,
+            email=credentials.id_token.get("email"),
             google_token=credentials.token,
-            google_refresh_token=credentials.refresh_token,
+            google_refresh_token=credentials.refresh_token
         )
         db.add(user)
         db.commit()
-        db.refresh(user)
+    else:
+        user.google_token = credentials.token
+        user.google_refresh_token = credentials.refresh_token
+        db.commit()
 
-    # Генерация JWT токена
-    access_token = create_access_token(data={"user_id": user.id})
-
-    # Возвращаем HTML для автоматического закрытия окна
-    return f"""
-    <html>
-        <head>
-            <title>Авторизация завершена</title>
-        </head>
-        <body>
-            <script>
-                window.opener.postMessage({{status: "success", token: "{access_token}"}}, "*");
-                window.close();
-            </script>
-            <p>Вы успешно авторизовались! Это окно закроется автоматически.</p>
-        </body>
-    </html>
-    """
+    return {"message": "Authorization successful"}

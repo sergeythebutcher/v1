@@ -3,25 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ваши проекты</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>MiniApp</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        #content {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+        }
+        button {
+            background-color: #0088cc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #005f99;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: #eee;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Ваши проекты</h1>
-    </header>
-    <main>
-        <ul>
-            {% for project in projects %}
-            <li>
-                <strong>{{ project.name }}</strong>
-                <p>Проект ID: {{ project.id }}</p>
-            </li>
-            {% endfor %}
-        </ul>
-    </main>
-    <footer>
-        <p>Budget Checker © 2024</p>
-    </footer>
+    <div id="content">
+        <p>Загрузка...</p>
+    </div>
+
+    <script>
+        window.Telegram.WebApp.ready();
+
+        const authData = Telegram.WebApp.initDataUnsafe;
+        const telegramId = authData.user?.id;
+
+        if (!telegramId) {
+            document.getElementById("content").innerHTML = `
+                <p>Telegram ID не найден. Пожалуйста, повторите попытку.</p>
+                <button onclick="Telegram.WebApp.close()">Закрыть</button>
+            `;
+        } else {
+            fetch('/miniapps/validate_user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: telegramId, ...authData }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 400) {
+                        throw new Error("Некорректные данные. Проверьте параметры.");
+                    } else if (response.status === 500) {
+                        throw new Error("Ошибка сервера. Попробуйте позже.");
+                    }
+                    throw new Error("Неизвестная ошибка.");
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.redirect_url) {
+                    document.getElementById("content").innerHTML = `
+                        <p>Необходимо пройти авторизацию через Google.</p>
+                        <button onclick="window.location.href='${data.redirect_url}'">Авторизоваться</button>
+                    `;
+                } else if (data.projects) {
+                    const projects = data.projects.map(p => `<li>${p.name}</li>`).join('');
+                    document.getElementById("content").innerHTML = `
+                        <h1>Ваши проекты</h1>
+                        <ul>${projects}</ul>
+                    `;
+                } else {
+                    document.getElementById("content").innerHTML = `
+                        <p>Ошибка загрузки данных. Попробуйте позже.</p>
+                        <button onclick="Telegram.WebApp.close()">Закрыть</button>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                document.getElementById("content").innerHTML = `
+                    <p>Ошибка соединения с сервером: ${error.message}</p>
+                    <button onclick="Telegram.WebApp.close()">Закрыть</button>
+                `;
+            });
+        }
+    </script>
 </body>
 </html>
