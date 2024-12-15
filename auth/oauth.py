@@ -6,6 +6,7 @@ from google.auth.transport.requests import Request
 from dotenv import load_dotenv
 import logging
 import time
+from core.models import User
 
 
 # Логирование ошибок
@@ -45,3 +46,20 @@ def verify_google_token(token):
     except ValueError as e:
         logging.error(f"Token verification failed: {e}")
         return None
+    
+# Проверка токена для пользователя
+def check_google_token(user: User):
+    """
+    Проверяет, действителен ли токен Google для пользователя.
+    """
+    if not user.google_token:
+        logging.warning(f"User ID {user.id} does not have a Google token.")
+        raise HTTPException(status_code=401, detail="Google OAuth token is missing.")
+
+    token_info = verify_google_token(user.google_token)
+    if not token_info:
+        logging.warning(f"Invalid Google token for user ID {user.id}.")
+        raise HTTPException(status_code=401, detail="Google OAuth token is invalid.")
+    
+    logging.info(f"Google token for user ID {user.id} is valid.")
+    return token_info

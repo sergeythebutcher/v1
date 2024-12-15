@@ -12,3 +12,4 @@ google-auth-httplib2
 python-telegram-bot
 aiogram
 python-jose==3.3.0
+jinja2
