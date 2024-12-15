@@ -1,5 +1,5 @@
 import os
-from telegram import Update, Bot
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 from core.db import SessionLocal
 from core.models import User
@@ -46,7 +46,7 @@ def is_google_token_valid(token: str) -> bool:
 # Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Регистрация пользователя, проверка OAuth токена и генерация JWT.
+    Регистрация пользователя, проверка OAuth токена и генерация кнопки для OAuth авторизации.
     """
     telegram_id = update.message.chat.id
     first_name = update.message.chat.first_name
@@ -75,10 +75,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Проверка токенов Google
         if not user.google_token or not is_google_token_valid(user.google_token):
-            # Если токена нет или он недействителен, отправляем ссылку для OAuth
+            # Если токена нет или он недействителен, отправляем кнопку с OAuth ссылкой
             oauth_url = generate_oauth_url(str(telegram_id))
+            keyboard = [
+                [InlineKeyboardButton("Пройти авторизацию Google", url=oauth_url)]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
-                f"Для доступа к функционалу пройдите авторизацию Google:\n{oauth_url}"
+                "Для доступа к функционалу нажмите на кнопку ниже:",
+                reply_markup=reply_markup
             )
         else:
             # Если токен Google действителен, создаем JWT
