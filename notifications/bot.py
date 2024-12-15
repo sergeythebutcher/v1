@@ -3,11 +3,18 @@ from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, ContextTypes
 from core.db import SessionLocal
 from core.models import User
-from auth.jwt import create_access_token, get_current_user
-from auth.oauth import get_google_auth_flow, verify_google_token
+from auth.jwt import create_access_token
+from auth.oauth import get_google_auth_flow
+import requests
+from projects.crud import create_project  # Импорт функции создания проекта
+from sqlalchemy.exc import IntegrityError  # Импорт обработки исключения IntegrityError
+
 
 # Получение токена из переменных окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+# Google API URL для получения информации о пользователе
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
 # Создание бота и приложения Telegram
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -21,6 +28,20 @@ def generate_oauth_url(telegram_id: str) -> str:
     flow = get_google_auth_flow()
     auth_url, _ = flow.authorization_url(prompt="consent", state=telegram_id)
     return auth_url
+
+# Проверка валидности Google токена
+def is_google_token_valid(token: str) -> bool:
+    """
+    Проверяет валидность Google access_token через API.
+    """
+    try:
+        response = requests.get(
+            GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
 
 # Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -53,7 +74,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         # Проверка токенов Google
-        if not user.google_token or not verify_google_token(user.google_token):
+        if not user.google_token or not is_google_token_valid(user.google_token):
             # Если токена нет или он недействителен, отправляем ссылку для OAuth
             oauth_url = generate_oauth_url(str(telegram_id))
             await update.message.reply_text(
@@ -77,7 +98,7 @@ async def get_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     with SessionLocal() as db:
         user = db.query(User).filter(User.telegram_id == str(telegram_id)).first()
-        if not user or not verify_google_token(user.google_token):
+        if not user or not is_google_token_valid(user.google_token):
             # Если пользователь не авторизован
             await update.message.reply_text(
                 "Вы не авторизованы. Пройдите авторизацию через Google сначала."
@@ -89,10 +110,39 @@ async def get_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Ваш JWT токен: {access_token}\n"
                 "Используйте его для доступа к API или Mini App."
             )
+# Обработчик команды /create_project
+async def create_project_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Создает новый проект для пользователя.
+    """
+    telegram_id = update.message.chat.id
+
+    # Проверяем, есть ли имя проекта в аргументах команды
+    if not context.args:
+        await update.message.reply_text("Пожалуйста, укажите название проекта. Пример: /create_project МойПроект")
+        return
+
+    project_name = " ".join(context.args)  # Соединяем переданные слова в название проекта
+
+    with SessionLocal() as db:
+        # Проверяем, существует ли пользователь
+        user = db.query(User).filter(User.telegram_id == str(telegram_id)).first()
+        if not user:
+            await update.message.reply_text("Вы не зарегистрированы. Сначала выполните /start.")
+            return
+
+        try:
+            # Создаем проект
+            project = create_project(db, name=project_name, user_id=user.id)
+            await update.message.reply_text(f"Проект '{project.name}' успешно создан!")
+        except IntegrityError:
+            await update.message.reply_text("Произошла ошибка при создании проекта. Попробуйте снова.")
 
 # Регистрация обработчиков команд
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("token", get_token))
+application.add_handler(CommandHandler("create_project", create_project_command))
+
 
 # Запуск бота
 if __name__ == "__main__":
