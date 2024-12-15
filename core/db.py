@@ -7,9 +7,7 @@ from dotenv import load_dotenv
 # Загрузка переменных из .env
 load_dotenv()
 # Строка подключения к базе данных
-DATABASE_URL = os.getenv(
-    "DATABASE_URL"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Настройка SQLAlchemy
 engine = create_engine(DATABASE_URL)

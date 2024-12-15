@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   web:
     build:
@@ -9,10 +7,13 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - GOOGLE_CLIENT_SECRETS_FILE=${GOOGLE_CLIENT_SECRETS_FILE}
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - DATABASE_URL=${DATABASE_URL}
+      - TZ=${TZ}
     volumes:
       - .:/app
+      - /etc/localtime:/etc/localtime:ro  # Синхронизация времени
     depends_on:
       - db
       - redis
@@ -24,10 +25,13 @@ services:
     container_name: budget_checker_bot
     command: python run_bot.py  # Запуск скрипта бота
     environment:
+      - GOOGLE_CLIENT_SECRETS_FILE=${GOOGLE_CLIENT_SECRETS_FILE}
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - DATABASE_URL=${DATABASE_URL}
+      - TZ=${TZ}
     volumes:
       - .:/app
+      - /etc/localtime:/etc/localtime:ro  # Синхронизация времени
     depends_on:
       - db
       - redis
@@ -40,16 +44,23 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ}  # Убрана лишняя черточка
     ports:
-      - "63366:63366"
+      - "63366:63366"  
     volumes:
       - db_data:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro  # Синхронизация времени
 
   redis:
     image: redis:alpine
     container_name: budget_checker_redis
     ports:
       - "6379:6379"
+    environment:
+      - GOOGLE_CLIENT_SECRETS_FILE=${GOOGLE_CLIENT_SECRETS_FILE}
+      - TZ=${TZ}  # Добавлен часовой пояс
+    volumes:
+      - /etc/localtime:/etc/localtime:ro  # Синхронизация времени
 
 volumes:
   db_data:

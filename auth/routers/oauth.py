@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.responses import HTMLResponse  # Добавлен импорт
+from fastapi.responses import HTMLResponse 
 from auth.oauth import get_google_auth_flow, verify_google_token
 from core.models import User
 from sqlalchemy.orm import Session
