@@ -12,11 +12,12 @@ def create_project(db: Session, name: str, user_id: int):
 def get_projects(db: Session, user_id: int):
     return db.query(Project).filter(Project.user_id == user_id).all()
 
-def get_project_by_id(db: Session, project_id: int):
-    return db.query(Project).filter(Project.id == project_id).first()
+def get_project_by_id(db: Session, project_id: int, user_id: int):
+    # Проверка принадлежности проекта пользователю
+    return db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
 
-def update_project(db: Session, project_id: int, name: str):
-    project = db.query(Project).filter(Project.id == project_id).first()
+def update_project(db: Session, user_id: int, project_id: int, name: str):
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
     if project:
         project.name = name
         db.commit()
@@ -24,8 +25,8 @@ def update_project(db: Session, project_id: int, name: str):
         return project
     return None
 
-def delete_project(db: Session, project_id: int):
-    project = db.query(Project).filter(Project.id == project_id).first()
+def delete_project(db: Session, user_id: int, project_id: int):
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
     if project:
         db.delete(project)
         db.commit()
@@ -33,7 +34,11 @@ def delete_project(db: Session, project_id: int):
     return False
 
 # CRUD для рекламных кабинетов
-def create_ad_account(db: Session, project_id: int, platform: str, account_id: str, account_name: str):
+def create_ad_account(db: Session, user_id: int, project_id: int, platform: str, account_id: str, account_name: str):
+    # Проверяем принадлежность проекта
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
+    if not project:
+        raise ValueError("Project does not belong to the current user.")
     ad_account = AdAccount(
         project_id=project_id,
         platform=platform,
@@ -45,11 +50,18 @@ def create_ad_account(db: Session, project_id: int, platform: str, account_id: s
     db.refresh(ad_account)
     return ad_account
 
-def get_ad_accounts(db: Session, project_id: int):
+def get_ad_accounts(db: Session, user_id: int, project_id: int):
+    # Проверяем принадлежность проекта
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
+    if not project:
+        raise ValueError("Project does not belong to the current user.")
     return db.query(AdAccount).filter(AdAccount.project_id == project_id).all()
 
-def delete_ad_account(db: Session, ad_account_id: int):
-    ad_account = db.query(AdAccount).filter(AdAccount.id == ad_account_id).first()
+def delete_ad_account(db: Session, user_id: int, ad_account_id: int):
+    ad_account = db.query(AdAccount).join(Project).filter(
+        AdAccount.id == ad_account_id,
+        Project.user_id == user_id
+    ).first()
     if ad_account:
         db.delete(ad_account)
         db.commit()
@@ -57,7 +69,11 @@ def delete_ad_account(db: Session, ad_account_id: int):
     return False
 
 # CRUD для операционных периодов
-def create_operation_period(db: Session, project_id: int, name: str, start_date: str, end_date: str = None):
+def create_operation_period(db: Session, user_id: int, project_id: int, name: str, start_date: str, end_date: str = None):
+    # Проверяем принадлежность проекта
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
+    if not project:
+        raise ValueError("Project does not belong to the current user.")
     operation_period = OperationPeriod(
         project_id=project_id,
         name=name,
@@ -69,11 +85,19 @@ def create_operation_period(db: Session, project_id: int, name: str, start_date:
     db.refresh(operation_period)
     return operation_period
 
-def get_operation_periods(db: Session, project_id: int):
+def get_operation_periods(db: Session, user_id: int, project_id: int):
+    # Проверяем принадлежность проекта
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
+    if not project:
+        raise ValueError("Project does not belong to the current user.")
     return db.query(OperationPeriod).filter(OperationPeriod.project_id == project_id).all()
 
 # CRUD для бюджетов
-def create_budget(db: Session, project_id: int, operation_period_id: int, amount: float, ad_account_id: int = None, campaign_id: str = None):
+def create_budget(db: Session, user_id: int, project_id: int, operation_period_id: int, amount: float, ad_account_id: int = None, campaign_id: str = None):
+    # Проверяем принадлежность проекта
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
+    if not project:
+        raise ValueError("Project does not belong to the current user.")
     budget = Budget(
         project_id=project_id,
         operation_period_id=operation_period_id,
@@ -86,5 +110,9 @@ def create_budget(db: Session, project_id: int, operation_period_id: int, amount
     db.refresh(budget)
     return budget
 
-def get_budgets(db: Session, project_id: int):
+def get_budgets(db: Session, user_id: int, project_id: int):
+    # Проверяем принадлежность проекта
+    project = db.query(Project).filter(Project.id == project_id, Project.user_id == user_id).first()
+    if not project:
+        raise ValueError("Project does not belong to the current user.")
     return db.query(Budget).filter(Budget.project_id == project_id).all()

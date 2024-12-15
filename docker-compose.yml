@@ -7,6 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - JWT_SECRET=${JWT_SECRET}
       - GOOGLE_CLIENT_SECRETS_FILE=${GOOGLE_CLIENT_SECRETS_FILE}
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - DATABASE_URL=${DATABASE_URL}
@@ -25,6 +26,7 @@ services:
     container_name: budget_checker_bot
     command: python run_bot.py  # Запуск скрипта бота
     environment:
+      - JWT_SECRET=${JWT_SECRET}
       - GOOGLE_CLIENT_SECRETS_FILE=${GOOGLE_CLIENT_SECRETS_FILE}
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - DATABASE_URL=${DATABASE_URL}
@@ -40,6 +42,7 @@ services:
     image: mysql:8.0
     container_name: budget_checker_db
     environment:
+      JWT_SECRET: ${JWT_SECRET}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}

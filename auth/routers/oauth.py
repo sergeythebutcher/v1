@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.responses import HTMLResponse 
+from fastapi.responses import HTMLResponse
 from auth.oauth import get_google_auth_flow, verify_google_token
 from core.models import User
 from sqlalchemy.orm import Session
 from core.dependencies import get_db
+from auth.jwt import create_access_token
 
 router = APIRouter()
 
@@ -57,8 +58,11 @@ def callback(code: str, state: str, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
+    # Генерация JWT токена
+    access_token = create_access_token(data={"user_id": user.id})
+
     # Возвращаем HTML для автоматического закрытия окна
-    return """
+    return f"""
     <html>
         <head>
             <title>Авторизация завершена</title>
